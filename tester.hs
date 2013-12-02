@@ -14,11 +14,11 @@
 --	<term> -> <factor> { (*|/) <factor> }
 --	<factor> -> id | int_constant | { <expr> }
 import System.Environment
-import Lexer
+import Lex
 main = do 
 	contents <- readFile "input.txt"
-	putStr (unlines (parseLines (lines contents)))
---	putStr contents
+--	putStr (unlines (parseLines (lines contents)))
+	putStr contents
 
 parseLines [] = []
 parseLines (x:xs) = 
