@@ -19,8 +19,18 @@ helloWorld
 --	fn that eats string
 --	returns list [a,String b] where
 --		a is the parsed thingy
---		String b is the unparsed latter bit
+--		after is the unparsed latter bit
 newtype Parser a = Parser (String -> [ (a, String) ]  )
+
+--Passing results from one parser to another.
+--	Parse input string with parser p.
+--	For each possible solution (a,cs')
+--		X
+instance Monad Parser where
+	return a = Parser (\cs -> [(a,cs)])
+	p >>= f = Parser (\cs -> concat [parse (f a) cs' | (a,cs') <- parse p cs] )
+
+
 
 --hi level parser
 -----------------------------
@@ -35,7 +45,14 @@ parseChar = Parser $ \cs -> case cs of
 	[] 		-> []
 
 
---either parser
+--Parser Combinators
+------------------------------
+
+
+--Alternation
+--Combines results of two parsers. 
+
+--Concatenation - either parser
 --	Parses with first parser. 
 --		If it works, returns results.
 --		If it doesn't work, parses with second parser.
