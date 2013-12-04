@@ -15,11 +15,13 @@
 --	<factor> -> id | int_constant | { <expr> }
 import System.Environment
 import Lex
+import MyGrammar
 main = do 
-	contents <- readFile "input.txt"
+--	contents <- readFile "input.txt"
 --	putStr (unlines (parseLines (lines contents)))
-	putStr contents
-
+--	putStr contents
+	putStr "done"
+	
 parseLines [] = []
 parseLines (x:xs) = 
 	parseOneLine(x) : parseLines(xs)
