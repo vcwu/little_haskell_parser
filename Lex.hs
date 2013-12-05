@@ -12,16 +12,8 @@
 
 module Lex
 (
-Parser,
-parse,	--to execute a Parser	
-item,	--Parser to consume one char
-many,	--
-alpha,
-digit,
-space,
-ident
 ) where
-
+import Data.String
 import Data.Char
 import Control.Monad
 --Type Parser
@@ -31,6 +23,7 @@ import Control.Monad
 --		after is the unparsed latter bit
 newtype Parser a = Parser (String -> [ (a, String) ]  ) 
 
+newtype MyStr a = String a
 
 --Passing results from one parser to another.
 --	Parse input string with parser p.
@@ -41,6 +34,20 @@ instance Monad Parser where
 	return a = Parser (\cs -> [(a,cs)])
 	p >>= f = Parser (\cs -> concat [parse (f a) cs' | (a,cs') <- parse p cs] )
 
+--class Monad m => MonadZero m where
+--	zero :: m a
+--instance MonadZero Parser where
+--	zero = Parser (\cs -> [])
+
+--Union operator
+--class MonadZero m => MonadPlus m where
+--	(++) :: m a -> m a -> m a
+--instance MonadPlus Parser where
+--	p ++ q = Parser (\cs -> parse p cs ++ parse q cs)
+
+instance MonadPlus Parser where
+	mzero =  Parser (\cs -> [])
+	p `mplus` q  = Parser (\cs -> parse p cs ++ parse q cs) 
 
 -- ****************************************
 
@@ -65,20 +72,19 @@ result v = Parser $ \inp -> [(v, inp)]
 --Parser Operators
 ------------------------------
 
---Union
---Combines results of two parsers. 
-choose :: Parser a -> Parser a -> Parser a
-p `choose` q = Parser $  \inp -> (parse p inp ++ parse q inp)
+--Deterministic choice operator.
+(+++) :: Parser a -> Parser a -> Parser a
+p +++ q = Parser $ \cs -> case parse ( p `mplus`  q ) cs of
+	[] -> []
+	(x:xs) -> [x]
+--	ps -> ps
 
---bugggggy :( - > how do I tell if a parser failed??
---deteriministic parser 
---		If first works, returns first result.
---		If it doesn't work, parses with second parser and gets first result.
---		Guaranteed to only return at most one thing.
+--Execute first parser. If it fails, execute second one -> only one right answer
 (<|>) :: Parser a -> Parser a -> Parser a
-p1 <|> p2 = Parser $ \cs -> case parse p1 cs of
-	[] -> take 1 (parse p2 cs)
-	((a,cs'):_) -> [(a,cs')]
+p <|> q = Parser $ \cs -> case parse p cs of
+	[] -> parse q cs
+	ps -> ps
+
 --Parser Combinators
 ------------------------------
 
@@ -112,9 +118,19 @@ string = mapM char --so, mapM is just sequence (map f as)
 --returns  not all possibilities, but only the largest
 --liftM :: (Monad m) => (a -> b) -> m a -> m b 
 --liftM2 :: (Monad m) => (a -> b -> c) -> m a -> m b -> m c *same as liftM, but with 2 params
-many :: Parser a -> Parser [a]
-many p = ( liftM2 (:) p (many p) ) <|>  return []
+--many :: Parser a -> Parser [a]
+--many p = ( liftM2 (:) p (many p) ) <|>  return []
 --many p = ( liftM2 (:) p (many p) )  `choose`  return []
+
+--sigh.. the mutualy recursive ones :(
+--many - zero or more times
+many :: Parser a -> Parser [a]
+many p = many1 p +++ return []
+
+--many1 - one or more times
+many1 :: Parser a -> Parser [a]
+many1 p = do {a <- p; as <- many p; return (a:as)}
+
 
 
 
@@ -123,12 +139,64 @@ many p = ( liftM2 (:) p (many p) ) <|>  return []
 
 --get an identifier- made up of any alpha char 
 ident :: Parser String
-ident = many alpha
+ident = many1 alpha
 
 --get a number (for our purposes, not bothering to convert to int)
 number :: Parser String
-number = many digit
+number = many1 digit
+
+--token:: Parser a -> Parser a
+--token p = do {a <- p; many (satisfy isSpace) ; return a }
+
+-- get rid of those pesky trailing spaces
+
+token :: Parser a -> Parser a
+token p = do {a <- p; many space; return a}
+
+
+-- Grammar time!
+-- *****************************************
+
+--addOp
+addOp :: Parser String
+addOp = string "+" <|> string "-"
+
+--multOp
+multOp :: Parser String
+multOp = string "*" <|> string "/"
+
 
 --	<factor> -> id | int_constant | { <expr> }
 factor :: Parser String
-factor = ident <|>  number 
+factor = ident <|> number 
+
+--tester try to parse a + b
+--tester:: Parser String
+--tester = token factor >> token addOp >> token factor
+
+--BUG TIME GUYS!!
+--lexical error in string/character literal at character 'a'
+--parse termlette "/ asdfasdf"
+-- ..  i don't even know anymore. i think it's cause it's an escape character T.T
+
+
+-- Made specifically to account for the { blah blah }, of needing zero or more.
+--repeatParser :: Parser String  -> Parser String
+--repeatParser par = Parser $ \ (a,cs) -> ("testing", cs)
+--repeatParser p = ( liftM2 (:) p (repeatParser p) ) <|>  return []
+
+-- parser for this thingy -> { (*|/) <factor> }
+termlette :: Parser String
+termlette = token multOp >> token factor
+
+--	<term> -> <factor> { (*|/) <factor> }
+term :: Parser String
+term = token  factor >> ( many termlette)
+--
+--
+--ok problem... when I chain many1, things get WEIIRD. 
+--but i dont know how to chain anything then :( this will only check the first toke n bleeehhhhh
+accept :: String -> String
+accept str = case parse (factor) str of
+	[] -> "Reject"
+	ps -> "Accept" 
