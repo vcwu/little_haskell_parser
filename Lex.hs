@@ -182,14 +182,14 @@ factor = ident <|> number
 --HOLY COW IT WORKS
 magic :: Parser a -> Parser a
 magic par = Parser $ \cs -> case parse par cs of
-	[] -> []
 	[(a,"")] -> [(a,"")]
+	[] -> []
 	[(a,cs')] -> parse (magic par) cs' 
 
 -- now to fix my bug...
--- it needs to repeat the parser ZERO or more times
---magicZero :: Parser a -> Parser a
---magicZero par = 
+--checker :: String -> [(String, String)] 
+--checker str = case str of
+--	"" = uuu
 
 
 --BUG TIME GUYS!!
@@ -205,7 +205,9 @@ magic par = Parser $ \cs -> case parse par cs of
 
 -- parser for this thingy -> { (*|/) <factor> }
 termlette :: Parser String
-termlette = token multOp >> token factor
+termlette = Parser $ \cs -> case cs of
+	"" -> [("end of term","")]
+	cs' -> parse (token multOp >> token factor) cs' 
 
 --buggggg -> so this should return TRUE is there isn't a termlette
 --	<term> -> <factor> { (*|/) <factor> }
