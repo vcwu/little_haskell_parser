@@ -170,9 +170,27 @@ multOp = string "*" <|> string "/"
 factor :: Parser String
 factor = ident <|> number 
 
---tester try to parse a + b
---tester:: Parser String
---tester = token factor >> token addOp >> token factor
+--tester try to parse MULTIPLE THINGIES - the dreaded { thing } in EBNF 
+--tester:: Parser String -> Parser String
+--tester par = Parser $ \cs -> case parse par (cs) of
+--	[] -> []
+--	[(a, "")] -> [(a,"")]
+--	ps -> tester par 
+
+--WHat I want this to do.
+--Repeat this parser ONE or more times :(
+--HOLY COW IT WORKS
+magic :: Parser a -> Parser a
+magic par = Parser $ \cs -> case parse par cs of
+	[] -> []
+	[(a,"")] -> [(a,"")]
+	[(a,cs')] -> parse (magic par) cs' 
+
+-- now to fix my bug...
+-- it needs to repeat the parser ZERO or more times
+--magicZero :: Parser a -> Parser a
+--magicZero par = 
+
 
 --BUG TIME GUYS!!
 --lexical error in string/character literal at character 'a'
@@ -189,11 +207,19 @@ factor = ident <|> number
 termlette :: Parser String
 termlette = token multOp >> token factor
 
+--buggggg -> so this should return TRUE is there isn't a termlette
 --	<term> -> <factor> { (*|/) <factor> }
 term :: Parser String
-term = token  factor >> ( many termlette)
---
---
+term = token factor >> ( magic termlette)
+
+-- parser for this thingy -> {(+|-) <term>  } 
+exprlette:: Parser String
+exprlette = token addOp >> token term 
+
+--	<expr> -> <term> {(+|-) <term> }
+expr :: Parser String
+expr = token term >>  (magic exprlette)
+
 --ok problem... when I chain many1, things get WEIIRD. 
 --but i dont know how to chain anything then :( this will only check the first toke n bleeehhhhh
 accept :: String -> String
