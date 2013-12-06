@@ -182,9 +182,9 @@ factor = ident <|> number
 --HOLY COW IT WORKS
 magic :: String -> Parser String ->  Parser String
 magic str par = Parser $ \cs -> case parse par cs of
-	[(a,"")] -> [(a,"")]
-	[] -> []
-	[(a,cs')] -> parse (magic a par) cs' 
+		[(a,"")] -> [(a,"")]
+		[] -> []
+		[(a,cs')] -> parse (magic a par) cs' 
 
 -- in a perfect world, this would repeat the parser ZERO or more times 
 
@@ -206,19 +206,30 @@ termlette = token multOp >> token factor
 --buggggg -> so this should return TRUE is there isn't a termlette
 --	<term> -> <factor> { (*|/) <factor> }
 term :: Parser String
-term = token factor >>= \cs -> (magic cs termlette)
+term = Parser $ \cs -> case parse (token factor) cs of
+	[(a,"")] -> [(a,"")]
+	[(a,cs')] -> parse (magic a termlette) cs'
+-- so the cs being passed is the a from the resulting  [(a,cs')] 
+
 
 -- parser for this thingy -> {(+|-) <term>  } 
 exprlette:: Parser String
 exprlette = token addOp >> token term 
 
+
+-- ... well it works more than before :D 
+--  can now parse with / and * using parse expr...
+--  but add in + and - and you get
+-- Lex.hs:(221,24)-(223,50): Non-exhaustive patterns in case XD
 --	<expr> -> <term> {(+|-) <term> }
---expr :: Parser String
---expr = token term >>  (magic exprlette)
+expr :: Parser String
+expr = Parser $ \cs -> case parse (token term) cs of
+	[(a,"")] -> [(a,"")]
+	[(a,cs')] -> parse (magic a exprlette) cs'
 
 --ok problem... when I chain many1, things get WEIIRD. 
 --but i dont know how to chain anything then :( this will only check the first toke n bleeehhhhh
-accept :: String -> String
+accep:: String -> String
 accept str = case parse (factor) str of
 	[] -> "Reject"
 	ps -> "Accept" 
