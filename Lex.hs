@@ -180,17 +180,13 @@ factor = ident <|> number
 --WHat I want this to do.
 --Repeat this parser ONE or more times :(
 --HOLY COW IT WORKS
-magic :: Parser a -> Parser a
-magic par = Parser $ \cs -> case parse par cs of
+magic :: String -> Parser String ->  Parser String
+magic str par = Parser $ \cs -> case parse par cs of
 	[(a,"")] -> [(a,"")]
 	[] -> []
-	[(a,cs')] -> parse (magic par) cs' 
+	[(a,cs')] -> parse (magic a par) cs' 
 
--- now to fix my bug...
---checker :: String -> [(String, String)] 
---checker str = case str of
---	"" = uuu
-
+-- in a perfect world, this would repeat the parser ZERO or more times 
 
 --BUG TIME GUYS!!
 --lexical error in string/character literal at character 'a'
@@ -205,22 +201,20 @@ magic par = Parser $ \cs -> case parse par cs of
 
 -- parser for this thingy -> { (*|/) <factor> }
 termlette :: Parser String
-termlette = Parser $ \cs -> case cs of
-	"" -> [("end of term","")]
-	cs' -> parse (token multOp >> token factor) cs' 
+termlette = token multOp >> token factor 
 
 --buggggg -> so this should return TRUE is there isn't a termlette
 --	<term> -> <factor> { (*|/) <factor> }
 term :: Parser String
-term = token factor >> ( magic termlette)
+term = token factor >>= \cs -> (magic cs termlette)
 
 -- parser for this thingy -> {(+|-) <term>  } 
 exprlette:: Parser String
 exprlette = token addOp >> token term 
 
 --	<expr> -> <term> {(+|-) <term> }
-expr :: Parser String
-expr = token term >>  (magic exprlette)
+--expr :: Parser String
+--expr = token term >>  (magic exprlette)
 
 --ok problem... when I chain many1, things get WEIIRD. 
 --but i dont know how to chain anything then :( this will only check the first toke n bleeehhhhh
