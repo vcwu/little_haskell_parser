@@ -1,26 +1,19 @@
---little baby steps
---let's try and read a file
---now let's do stuff one line at a time
 
-
-
-
---take while
---do while? - for paren getting
-
---make a lexar. so given an input string... 
--- break it up into TOKEN (type) and lexeme (the actual thingy)
+--Victoria Wu
+--Fall 2013
+--CS 441 Programming Languages
+--
+--Tester file to take in input file and apply the parser that parses this grammar
 --	<expr> -> <term> {(+|-) <term> }
 --	<term> -> <factor> { (*|/) <factor> }
 --	<factor> -> id | int_constant | { <expr> }
 import System.Environment
-import Lex
-import MyGrammar
+import Lex (accept)
 main = do 
---	contents <- readFile "input.txt"
---	putStr (unlines (parseLines (lines contents)))
+	contents <- readFile "input.txt"
+	putStr (unlines (parseLines (lines contents)))
 --	putStr contents
-	putStr "done"
+--	putStr "done"
 	
 parseLines [] = []
 parseLines (x:xs) = 
@@ -28,4 +21,5 @@ parseLines (x:xs) =
 
 
 parseOneLine "" = ""
-parseOneLine xs = xs ++ "has been parsed"
+--parseOneLine xs = xs ++ " => " ++ accept xs
+parseOneLine xs = accept xs

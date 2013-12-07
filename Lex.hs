@@ -2,16 +2,33 @@
 --Fall 2013 
 --CS 441 Programming Languages
 --
---Core Monadic Parsing Library
---
---The basic functions are all taken and in some cases modified from the following resources. 
+--Most of the basic functions are taken from tutorial/reference materials mentioned below. 
+--The bulk of my work is under "Grammar Time".
+
+
+--KNOWN BUGS 
+--Trying to parse "/" an escape char will not go well 
+
 --References:
---Hutton "Monadic Parsing in Haskell"
---Scheiber "Constructing a parser combinator in Haskell" from blog.maxscheiber.com
+--Constructing a parser combinator in haskell - Scheiber
+--http://blog.maxscheiber.com/2013/01/constructing-a-parser-combinator-in-haskell-part-1/
+--
+--Monadic Parsing Lecture Notes
+--http://www.seas.upenn.edu/~cis552/12fa/lectures/Parsers.html
+--
+--Monadic Parser Combinators - Hutton, Meijer
+--http://www.cs.nott.ac.uk/~gmh/monparsing.pdf
+--
+--Functional Pearls: Monadic Parsing in Haskell - Hutton, Meijer
+--http://www.cs.nott.ac.uk/~gmh/pearl.pdf
+--
+--Combinator Parsing : A Short Tutorial - Swierstra
+--http://www.cs.tufts.edu/~nr/cs257/archive/doaitse-swierstra/combinator-parsing-tutorial.pdf
 -- ****************************************
 
 module Lex
 (
+accept
 ) where
 import Data.String
 import Data.Char
@@ -33,17 +50,6 @@ newtype MyStr a = String a
 instance Monad Parser where
 	return a = Parser (\cs -> [(a,cs)])
 	p >>= f = Parser (\cs -> concat [parse (f a) cs' | (a,cs') <- parse p cs] )
-
---class Monad m => MonadZero m where
---	zero :: m a
---instance MonadZero Parser where
---	zero = Parser (\cs -> [])
-
---Union operator
---class MonadZero m => MonadPlus m where
---	(++) :: m a -> m a -> m a
---instance MonadPlus Parser where
---	p ++ q = Parser (\cs -> parse p cs ++ parse q cs)
 
 instance MonadPlus Parser where
 	mzero =  Parser (\cs -> [])
@@ -113,14 +119,6 @@ space = satisfy isSpace
 string :: String -> Parser String
 string = mapM char --so, mapM is just sequence (map f as) 
 
---many
---applies parser p zero or more times
---returns  not all possibilities, but only the largest
---liftM :: (Monad m) => (a -> b) -> m a -> m b 
---liftM2 :: (Monad m) => (a -> b -> c) -> m a -> m b -> m c *same as liftM, but with 2 params
---many :: Parser a -> Parser [a]
---many p = ( liftM2 (:) p (many p) ) <|>  return []
---many p = ( liftM2 (:) p (many p) )  `choose`  return []
 
 --sigh.. the mutualy recursive ones :(
 --many - zero or more times
@@ -145,11 +143,8 @@ ident = many1 alpha
 number :: Parser String
 number = many1 digit
 
---token:: Parser a -> Parser a
---token p = do {a <- p; many (satisfy isSpace) ; return a }
 
 -- get rid of those pesky trailing spaces
-
 token :: Parser a -> Parser a
 token p = do {a <- p; many space; return a}
 
@@ -166,49 +161,35 @@ multOp :: Parser String
 multOp = string "*" <|> string "/"
 
 
+--Parse for the parentheses...
+braces :: Parser String
+braces = token (string "(") >> expr >> token (string ")")
+
 --	<factor> -> id | int_constant | { <expr> }
 factor :: Parser String
-factor = ident <|> number 
-
---tester try to parse MULTIPLE THINGIES - the dreaded { thing } in EBNF 
---tester:: Parser String -> Parser String
---tester par = Parser $ \cs -> case parse par (cs) of
---	[] -> []
---	[(a, "")] -> [(a,"")]
---	ps -> tester par 
+factor = ident <|> number <|> braces 
 
 --WHat I want this to do.
 --Repeat this parser ONE or more times :(
 --HOLY COW IT WORKS
+--WHAT IS THIS SORCERY IT WORKS O.O (update #2 with expr YEAAAAAH)
 magic :: String -> Parser String ->  Parser String
 magic str par = Parser $ \cs -> case parse par cs of
 		[(a,"")] -> [(a,"")]
-		[] -> []
+		[] -> [("",cs)]
 		[(a,cs')] -> parse (magic a par) cs' 
 
--- in a perfect world, this would repeat the parser ZERO or more times 
-
---BUG TIME GUYS!!
---lexical error in string/character literal at character 'a'
---parse termlette "/ asdfasdf"
--- ..  i don't even know anymore. i think it's cause it's an escape character T.T
-
-
--- Made specifically to account for the { blah blah }, of needing zero or more.
---repeatParser :: Parser String  -> Parser String
---repeatParser par = Parser $ \ (a,cs) -> ("testing", cs)
---repeatParser p = ( liftM2 (:) p (repeatParser p) ) <|>  return []
 
 -- parser for this thingy -> { (*|/) <factor> }
 termlette :: Parser String
 termlette = token multOp >> token factor 
 
---buggggg -> so this should return TRUE is there isn't a termlette
 --	<term> -> <factor> { (*|/) <factor> }
 term :: Parser String
 term = Parser $ \cs -> case parse (token factor) cs of
 	[(a,"")] -> [(a,"")]
 	[(a,cs')] -> parse (magic a termlette) cs'
+	[] -> []
 -- so the cs being passed is the a from the resulting  [(a,cs')] 
 
 
@@ -217,19 +198,15 @@ exprlette:: Parser String
 exprlette = token addOp >> token term 
 
 
--- ... well it works more than before :D 
---  can now parse with / and * using parse expr...
---  but add in + and - and you get
--- Lex.hs:(221,24)-(223,50): Non-exhaustive patterns in case XD
 --	<expr> -> <term> {(+|-) <term> }
 expr :: Parser String
 expr = Parser $ \cs -> case parse (token term) cs of
 	[(a,"")] -> [(a,"")]
 	[(a,cs')] -> parse (magic a exprlette) cs'
+	[] -> []
 
---ok problem... when I chain many1, things get WEIIRD. 
---but i dont know how to chain anything then :( this will only check the first toke n bleeehhhhh
-accep:: String -> String
-accept str = case parse (factor) str of
-	[] -> "Reject"
-	ps -> "Accept" 
+-- Top level does this work or not
+accept:: String -> String
+accept str = case parse (expr) str of
+	[(a,"")]-> "ACCEPT"  
+	_ -> "REJECT"		--If the resulting string is not COMPLETELY parsed (ie dangling ')'), it's wrong.
