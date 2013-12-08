@@ -40,7 +40,6 @@ import Control.Monad
 --		after is the unparsed latter bit
 newtype Parser a = Parser (String -> [ (a, String) ]  ) 
 
-newtype MyStr a = String a
 
 --Passing results from one parser to another.
 --	Parse input string with parser p.
@@ -79,6 +78,7 @@ result v = Parser $ \inp -> [(v, inp)]
 ------------------------------
 
 --Deterministic choice operator.
+--Parse for both p and q. Only get the first parse output.
 (+++) :: Parser a -> Parser a -> Parser a
 p +++ q = Parser $ \cs -> case parse ( p `mplus`  q ) cs of
 	[] -> []
@@ -109,6 +109,7 @@ satisfy p = do
 char :: Char -> Parser Char
 char c = satisfy (==c)
 
+--alpha/digit/space 
 alpha, digit, space :: Parser Char
 alpha = satisfy isAlpha
 digit = satisfy isDigit
@@ -171,6 +172,7 @@ factor = ident <|> number <|> braces
 
 --WHat I want this to do.
 --Repeat this parser ONE or more times :(
+--Used specifically for the bigger parsers (termlette + exprlette)
 --HOLY COW IT WORKS
 --WHAT IS THIS SORCERY IT WORKS O.O (update #2 with expr YEAAAAAH)
 magic :: String -> Parser String ->  Parser String
