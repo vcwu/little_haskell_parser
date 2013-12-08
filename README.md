@@ -1,6 +1,13 @@
 little_haskell_parser
 =====================
 
+ghc tester.hs
+
+tester.hs -> reads input from input.txt, parses each line.
+Lex.hs -> the meat of the parsing library is here.
+
+
+
 Final Project - CS 441 Programming Languages: Design and Implementation
 
 Your final project is to implement a simple parser in a functional language. Using the Haskell 
